@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Rust dependencies
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      workspace:
+        patterns:
+          - "*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # NPM dependencies
+  - package-ecosystem: "npm"
+    directory: "/apps/desktop/ui"
+    schedule:
+      interval: "weekly"
+    groups:
+      frontend:
+        patterns:
+          - "*"
