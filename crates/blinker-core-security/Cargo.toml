@@ -1,0 +1,18 @@
+[package]
+name = "blinker-core-security"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+blinker-core-common = { path = "../blinker-core-common" }
+
+[target.'cfg(windows)'.dependencies]
+# TODO: Windows AppContainer
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# TODO: macOS App Sandbox
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# TODO: Linux seccomp-bpf

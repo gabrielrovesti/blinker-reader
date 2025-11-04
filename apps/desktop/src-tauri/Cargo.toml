@@ -1,0 +1,30 @@
+[package]
+name = "blinker-reader"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Workspace crates
+blinker-core-render = { path = "../../../crates/blinker-core-render" }
+blinker-core-library = { path = "../../../crates/blinker-core-library" }
+blinker-core-annot = { path = "../../../crates/blinker-core-annot" }
+blinker-core-security = { path = "../../../crates/blinker-core-security" }
+blinker-core-common = { path = "../../../crates/blinker-core-common" }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,14 @@
+[package]
+name = "blinker-core-render"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+blinker-core-common = { path = "../blinker-core-common" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+# TODO: Add PDFium bindings
+# pdfium-render = "0.8"
