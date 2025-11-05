@@ -39,7 +39,14 @@ pub struct LibraryQuery {
 
 /// Store operations required by higher layers.
 pub trait LibraryStore {
-    fn add_or_update_path(&self, path: &std::path::Path) -> Result<String>;
+    fn add_or_update_path(&self, path: &std::path::Path) -> Result<AddOutcome>;
     fn get_item(&self, id: &str) -> Result<Option<LibraryItem>>;
     fn query(&self, query: &LibraryQuery) -> Result<Vec<LibraryItem>>;
+}
+
+#[derive(Debug, Clone)]
+pub enum AddOutcome {
+    Created { id: String },
+    Updated { id: String },
+    Unchanged { id: String },
 }

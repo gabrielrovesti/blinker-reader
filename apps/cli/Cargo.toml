@@ -1,0 +1,13 @@
+[package]
+name = "blinker-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+blinker-core-library = { path = "../../crates/blinker-core-library" }
+blinker-core-common = { path = "../../crates/blinker-core-common" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true }
