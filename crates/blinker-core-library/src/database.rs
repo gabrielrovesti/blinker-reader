@@ -71,7 +71,10 @@ impl LibraryDatabase {
 
 impl LibraryStore for LibraryDatabase {
     fn add_or_update_path(&self, path: &Path) -> Result<AddOutcome> {
-        let meta = std::fs::metadata(path).map_err(|e| BlinkerError::Io(e))?;
+        // Normalize path to an absolute, canonical form when possible
+        let canon = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let path_str = canon.to_string_lossy().to_string();
+        let meta = std::fs::metadata(&canon).map_err(|e| BlinkerError::Io(e))?;
         if !meta.is_file() {
             return Err(BlinkerError::Parsing(format!("not a file: {}", path.display())));
         }
@@ -85,8 +88,17 @@ impl LibraryStore for LibraryDatabase {
         let existing: Option<(String, String)> = self.conn
             .query_row(
                 "SELECT id, file_hash FROM library_item WHERE file_path = ?1",
-                params![path.to_string_lossy()],
+                params![&path_str],
                 |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .ok();
+
+        // If path doesn’t exist but same content hash exists, update path
+        let by_hash: Option<String> = self.conn
+            .query_row(
+                "SELECT id FROM library_item WHERE id = ?1",
+                params![&file_hash],
+                |row| row.get(0),
             )
             .ok();
 
@@ -107,6 +119,15 @@ impl LibraryStore for LibraryDatabase {
                     .map_err(|e| BlinkerError::Database(format!("update item: {}", e)))?;
                 AddOutcome::Updated { id: existing_id }
             }
+        } else if let Some(existing_id) = by_hash {
+            // Same content seen at a different path; update file_path
+            self.conn
+                .execute(
+                    "UPDATE library_item SET file_path=?2, file_type=?3, file_size=?4, title=?5, author=?6, modified_at=?7, indexed_at=?7 WHERE id=?1",
+                    params![existing_id, path_str, file_type, file_size as i64, title, author, now],
+                )
+                .map_err(|e| BlinkerError::Database(format!("relink item: {}", e)))?;
+            AddOutcome::Updated { id: existing_id }
         } else {
             // New insert; ID uses content hash for PoC
             let id = file_hash.clone();
@@ -119,7 +140,7 @@ impl LibraryStore for LibraryDatabase {
                     ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, NULL, NULL, ?8, ?8, ?8)",
                     params![
                         id,
-                        path.to_string_lossy(),
+                        path_str,
                         file_hash,
                         file_type,
                         file_size as i64,
@@ -204,21 +225,28 @@ impl LibraryStore for LibraryDatabase {
             .prepare(&sql)
             .map_err(|e| BlinkerError::Database(format!("prepare query: {}", e)))?;
 
-        let mut rows = stmt.query_named(
-            params_box.iter().map(|(k,v)| (k.as_str(), &v as &dyn rusqlite::ToSql))
-        ).map_err(|e| BlinkerError::Database(format!("run query: {}", e)))?;
+        // Positional parameters vector in the same order as placeholders
+        let mut params_vec: Vec<String> = vec![];
+        if let Some(text) = &query.text { params_vec.push(format!("%{}%", text)); }
+        if let Some(types) = &query.file_types { for t in types { params_vec.push(t.clone()); } }
+
+        let rows = stmt
+            .query_map(rusqlite::params_from_iter(params_vec.iter()), |row| {
+                let id: String = row.get(0)?;
+                let file_path: String = row.get(1)?;
+                let file_hash: String = row.get(2)?;
+                let file_type: String = row.get(3)?;
+                let file_size: i64 = row.get(4)?;
+                let title: String = row.get(5)?;
+                let author: Option<String> = row.get(6)?;
+                let metadata = blinker_core_common::types::Metadata { title, author, ..Default::default() };
+                Ok(LibraryItem { id, file_path: PathBuf::from(file_path), file_hash, file_type, file_size: file_size as u64, metadata, tags: vec![] })
+            })
+            .map_err(|e| BlinkerError::Database(format!("run query: {}", e)))?;
 
         let mut out = vec![];
-        while let Some(row) = rows.next().map_err(|e| BlinkerError::Database(format!("row: {}", e)))? {
-            let id: String = row.get(0)?;
-            let file_path: String = row.get(1)?;
-            let file_hash: String = row.get(2)?;
-            let file_type: String = row.get(3)?;
-            let file_size: i64 = row.get(4)?;
-            let title: String = row.get(5)?;
-            let author: Option<String> = row.get(6)?;
-            let metadata = blinker_core_common::types::Metadata { title, author, ..Default::default() };
-            out.push(LibraryItem { id, file_path: PathBuf::from(file_path), file_hash, file_type, file_size: file_size as u64, metadata, tags: vec![] });
+        for r in rows {
+            out.push(r.map_err(|e| BlinkerError::Database(format!("row: {}", e)))?);
         }
         Ok(out)
     }

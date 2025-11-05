@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
+use blinker_core_library::LibraryStore;
 use crate::app_state::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,12 +25,17 @@ pub struct LibraryItem {
 #[tauri::command]
 pub async fn scan_library(state: State<'_, AppState>, paths: Vec<String>) -> Result<ScanReport, String> {
     tracing::info!("Scanning library paths: {:?}", paths);
-    let db = blinker_core_library::LibraryDatabase::new(&state.db_path)
-        .map_err(|e| e.to_string())?;
-    let scanner = blinker_core_library::LibraryScanner::new();
-    let pbufs: Vec<std::path::PathBuf> = paths.into_iter().map(Into::into).collect();
-    let prefs: Vec<&std::path::Path> = pbufs.iter().map(|p| p.as_path()).collect();
-    let rep = scanner.scan_paths(&db, &prefs).await.map_err(|e| e.to_string())?;
+    let db_path = state.db_path.clone();
+    let rep = tauri::async_runtime::spawn_blocking(move || {
+        let db = blinker_core_library::LibraryDatabase::new(&db_path)?;
+        let scanner = blinker_core_library::LibraryScanner::new();
+        let pbufs: Vec<std::path::PathBuf> = paths.into_iter().map(Into::into).collect();
+        let prefs: Vec<&std::path::Path> = pbufs.iter().map(|p| p.as_path()).collect();
+        scanner.scan_paths(&db, &prefs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
     Ok(ScanReport { total: rep.total, new: rep.new, updated: rep.updated, errors: rep.errors })
 }
 

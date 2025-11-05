@@ -22,15 +22,9 @@
       }
     },
     "bundle": {
-      "active": true,
+      "active": false,
       "identifier": "com.blinker.reader",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
+      "icon": [],
       "resources": [],
       "externalBin": [],
       "copyright": "Copyright (c) 2025 Blinker Team",

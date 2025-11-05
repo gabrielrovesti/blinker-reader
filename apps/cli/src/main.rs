@@ -29,7 +29,7 @@ async fn main() {
 
     let scanner = blinker_core_library::LibraryScanner::new();
     let paths = vec![dir.as_path()];
-    match scanner.scan_paths(&db, &paths).await {
+    match scanner.scan_paths(&db, &paths) {
         Ok(report) => {
             println!("Scan complete:");
             println!("  total:   {}", report.total);
@@ -47,4 +47,3 @@ async fn main() {
         }
     }
 }
-

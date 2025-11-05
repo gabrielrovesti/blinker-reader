@@ -7,7 +7,7 @@ pub struct LibraryScanner;
 impl LibraryScanner {
     pub fn new() -> Self { Self }
 
-    pub async fn scan_paths<S: LibraryStore>(&self, store: &S, paths: &[&Path]) -> Result<ScanReport> {
+    pub fn scan_paths<S: LibraryStore>(&self, store: &S, paths: &[&Path]) -> Result<ScanReport> {
         tracing::info!("Scanning library paths: {}", paths.len());
 
         let mut total = 0usize;

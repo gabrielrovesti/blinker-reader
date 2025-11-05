@@ -9,7 +9,7 @@ license.workspace = true
 tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { workspace = true }
+tauri = { workspace = true, features = ["shell-open", "dialog-open", "dialog-save"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

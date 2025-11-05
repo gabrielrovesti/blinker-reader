@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tracing_subscriber;
+use tauri::Manager;
 
 mod commands;
 mod app_state;
