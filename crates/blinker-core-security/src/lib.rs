@@ -25,6 +25,17 @@ impl Sandbox {
     }
 }
 
+/// Abstraction for applying sandbox restrictions.
+pub trait Sandboxer {
+    fn apply(&self) -> Result<()>;
+}
+
+impl Sandboxer for Sandbox {
+    fn apply(&self) -> Result<()> {
+        Self::apply(self)
+    }
+}
+
 pub mod sanitizer {
     use super::Result;
 

@@ -54,3 +54,29 @@ impl AnnotationManager {
         Ok(String::new())
     }
 }
+
+/// Store abstraction for annotations.
+pub trait AnnotationStore {
+    fn add(&self, annotation: Annotation) -> Result<String>;
+    fn list(&self, item_id: &str) -> Result<Vec<Annotation>>;
+    fn export_json(&self, item_id: &str) -> Result<String>;
+    fn export_markdown(&self, item_id: &str) -> Result<String>;
+}
+
+impl AnnotationStore for AnnotationManager {
+    fn add(&self, annotation: Annotation) -> Result<String> {
+        self.add_annotation(annotation)
+    }
+
+    fn list(&self, item_id: &str) -> Result<Vec<Annotation>> {
+        self.list_annotations(item_id)
+    }
+
+    fn export_json(&self, item_id: &str) -> Result<String> {
+        self.export_json(item_id)
+    }
+
+    fn export_markdown(&self, item_id: &str) -> Result<String> {
+        self.export_markdown(item_id)
+    }
+}

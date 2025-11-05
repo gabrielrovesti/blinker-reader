@@ -1,5 +1,6 @@
 use blinker_core_common::Result;
 use std::path::Path;
+use super::LibraryStore;
 
 pub struct LibraryScanner {
     // TODO: Add filesystem watcher
@@ -10,7 +11,7 @@ impl LibraryScanner {
         Self {}
     }
 
-    pub async fn scan_paths(&self, _paths: &[&Path]) -> Result<ScanReport> {
+    pub async fn scan_paths<S: LibraryStore>(&self, _store: &S, _paths: &[&Path]) -> Result<ScanReport> {
         // TODO: Implement scanning
         // - Walk directories
         // - Filter by supported extensions
