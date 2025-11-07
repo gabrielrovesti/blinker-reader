@@ -81,8 +81,19 @@ impl LibraryStore for LibraryDatabase {
         let file_size = meta.len();
         let file_hash = Self::file_hash(path)?;
         let file_type = Self::infer_file_type(path);
-        let title = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string();
-        let author: Option<String> = None;
+
+        // Extract metadata using MetadataExtractor
+        let extracted_meta = crate::metadata::MetadataExtractor::extract(path)
+            .unwrap_or_else(|_| {
+                // Fallback to basic metadata
+                blinker_core_common::types::Metadata {
+                    title: path.file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string(),
+                    ..Default::default()
+                }
+            });
+
+        let title = extracted_meta.title;
+        let author = extracted_meta.author;
         let now = Self::now_secs();
         // Determine if an entry exists for this file_path
         let existing: Option<(String, String)> = self.conn
