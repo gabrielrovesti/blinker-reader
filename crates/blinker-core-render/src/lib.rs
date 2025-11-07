@@ -79,4 +79,34 @@ impl AnyRenderer {
             )),
         }
     }
+
+    /// Get page count from the renderer
+    pub fn page_count(&self) -> Result<usize> {
+        match self {
+            Self::Pdf(r) => r.page_count(),
+            Self::Epub(r) => r.page_count(),
+            Self::Comic(r) => r.page_count(),
+            Self::Text(r) => r.page_count(),
+        }
+    }
+
+    /// Render a specific page
+    pub fn render_page(&self, page: usize) -> Result<RenderedPage> {
+        match self {
+            Self::Pdf(r) => r.render_page(page),
+            Self::Epub(r) => r.render_page(page),
+            Self::Comic(r) => r.render_page(page),
+            Self::Text(r) => r.render_page(page),
+        }
+    }
+
+    /// Search within the document
+    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<RenderSearchMatch>> {
+        match self {
+            Self::Pdf(r) => r.search(query, limit),
+            Self::Epub(r) => r.search(query, limit),
+            Self::Comic(r) => r.search(query, limit),
+            Self::Text(r) => r.search(query, limit),
+        }
+    }
 }

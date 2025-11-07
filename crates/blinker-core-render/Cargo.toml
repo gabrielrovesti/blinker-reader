@@ -10,5 +10,23 @@ blinker-core-common = { path = "../blinker-core-common" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
-# TODO: Add PDFium bindings
-# pdfium-render = "0.8"
+# PDF rendering
+pdfium-render = "0.9"
+
+# EPUB rendering
+epub = "2.0"
+
+# Comic archive support
+zip = "2.1"
+
+# Markdown rendering
+pulldown-cmark = "0.12"
+
+# HTML sanitization
+ammonia = "4.0"
+
+# Image decoding for comics
+image = "0.25"
+
+# Natural sorting for comic pages
+natord = "1.0"

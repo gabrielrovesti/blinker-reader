@@ -32,9 +32,13 @@ fn main() {
             commands::library::query_library,
             commands::library::update_metadata,
             commands::reader::open_document,
+            commands::reader::render_page,
             commands::reader::search_document,
+            commands::reader::close_session,
             commands::annotations::add_annotation,
             commands::annotations::list_annotations,
+            commands::annotations::delete_annotation,
+            commands::annotations::export_annotations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Blinker Reader");
