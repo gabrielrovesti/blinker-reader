@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { open } from "@tauri-apps/api/dialog";
+import { useNavigate } from "react-router-dom";
 import "../styles/Home.css";
 
 interface LibraryItem {
@@ -15,11 +17,17 @@ interface LibraryItem {
 function Home() {
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const handleScan = async () => {
     try {
-      // TODO: Open folder dialog and scan
-      const result = await invoke("scan_library", { paths: [] });
+      const selection = await open({ directory: true, multiple: true });
+      const paths = Array.isArray(selection)
+        ? (selection as string[])
+        : selection
+        ? [selection as string]
+        : [];
+      const result = await invoke("scan_library", { paths });
       console.log("Scan result:", result);
     } catch (error) {
       console.error("Scan error:", error);
@@ -29,7 +37,7 @@ function Home() {
   const handleSearch = async () => {
     try {
       const results = await invoke<LibraryItem[]>("query_library", {
-        filters: { query: searchQuery },
+        filters: { text: searchQuery, limit: 200 },
       });
       setLibrary(results);
     } catch (error) {
@@ -64,7 +72,14 @@ function Home() {
           </div>
         ) : (
           library.map((item) => (
-            <div key={item.id} className="library-item">
+            <div
+              key={item.id}
+              className="library-item"
+              onClick={() => navigate(`/reader/${encodeURIComponent(item.id)}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && navigate(`/reader/${encodeURIComponent(item.id)}`)}
+            >
               <div className="item-cover">
                 <span>{item.file_type.toUpperCase()}</span>
               </div>

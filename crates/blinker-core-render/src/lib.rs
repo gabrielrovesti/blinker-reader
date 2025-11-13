@@ -75,7 +75,10 @@ impl AnyRenderer {
         match self.kind {
             DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.page_count(),
             DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.page_count(),
-            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.page_count(),
+            DocumentFormat::Cbz => comic::ComicRenderer::open(&self.path)?.page_count(),
+            DocumentFormat::Cbr => Err(blinker_core_common::BlinkerError::Parsing(
+                "CBR (RAR) archives are not supported yet".into(),
+            )),
             DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.page_count(),
         }
     }
@@ -85,7 +88,10 @@ impl AnyRenderer {
         match self.kind {
             DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.render_page(page),
             DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.render_page(page),
-            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.render_page(page),
+            DocumentFormat::Cbz => comic::ComicRenderer::open(&self.path)?.render_page(page),
+            DocumentFormat::Cbr => Err(blinker_core_common::BlinkerError::Parsing(
+                "CBR (RAR) archives are not supported yet".into(),
+            )),
             DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.render_page(page),
         }
     }
@@ -95,7 +101,8 @@ impl AnyRenderer {
         match self.kind {
             DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.search(query, limit),
             DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.search(query, limit),
-            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.search(query, limit),
+            DocumentFormat::Cbz => comic::ComicRenderer::open(&self.path)?.search(query, limit),
+            DocumentFormat::Cbr => Ok(vec![]),
             DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.search(query, limit),
         }
     }
