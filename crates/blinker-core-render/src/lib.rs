@@ -15,7 +15,7 @@ pub use pdf::PdfRenderer;
 pub use epub::EpubRenderer;
 
 use blinker_core_common::{types::DocumentFormat, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A rendered page bitmap with dimensions.
 pub struct RenderedPage {
@@ -50,63 +50,53 @@ pub trait DocumentRenderer {
     }
 }
 
-/// Type-erased renderer for dynamic dispatch at runtime.
-pub enum AnyRenderer {
-    Pdf(PdfRenderer),
-    Epub(epub::EpubRenderer),
-    Comic(comic::ComicRenderer),
-    Text(text::TextRenderer),
+/// Lightweight handle for rendering that avoids storing non-Send backends.
+pub struct AnyRenderer {
+    path: PathBuf,
+    kind: DocumentFormat,
 }
 
 impl AnyRenderer {
-    /// Open a renderer based on file extension.
+    /// Create a handle based on file extension.
     pub fn open_for(path: &Path) -> Result<Self> {
         let ext = path
             .extension()
             .and_then(|s| s.to_str())
             .ok_or_else(|| blinker_core_common::BlinkerError::Parsing("Missing file extension".into()))?;
-        match DocumentFormat::from_extension(ext) {
-            Some(DocumentFormat::Pdf) => Ok(Self::Pdf(PdfRenderer::open(path)?)),
-            Some(DocumentFormat::Epub) => Ok(Self::Epub(epub::EpubRenderer::open(path)?)),
-            Some(DocumentFormat::Cbz) | Some(DocumentFormat::Cbr) => {
-                Ok(Self::Comic(comic::ComicRenderer::open(path)?))
-            }
-            Some(DocumentFormat::Txt) | Some(DocumentFormat::Markdown) => {
-                Ok(Self::Text(text::TextRenderer::open(path)?))
-            }
-            None => Err(blinker_core_common::BlinkerError::Parsing(
-                format!("Unsupported format: {}", ext),
-            )),
+        if let Some(kind) = DocumentFormat::from_extension(ext) {
+            Ok(Self { path: path.to_path_buf(), kind })
+        } else {
+            Err(blinker_core_common::BlinkerError::Parsing(format!("Unsupported format: {}", ext)))
         }
     }
 
-    /// Get page count from the renderer
+    /// Get page count by opening the appropriate backend on-demand.
     pub fn page_count(&self) -> Result<usize> {
-        match self {
-            Self::Pdf(r) => r.page_count(),
-            Self::Epub(r) => r.page_count(),
-            Self::Comic(r) => r.page_count(),
-            Self::Text(r) => r.page_count(),
+        match self.kind {
+            DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.page_count(),
+            DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.page_count(),
+            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.page_count(),
+            DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.page_count(),
         }
     }
 
-    /// Render a specific page
+    /// Render a specific page by opening the backend on-demand.
     pub fn render_page(&self, page: usize) -> Result<RenderedPage> {
-        match self {
-            Self::Pdf(r) => r.render_page(page),
-            Self::Epub(r) => r.render_page(page),
-            Self::Comic(r) => r.render_page(page),
-            Self::Text(r) => r.render_page(page),
+        match self.kind {
+            DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.render_page(page),
+            DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.render_page(page),
+            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.render_page(page),
+            DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.render_page(page),
         }
     }
 
-    /// Search within the document
+    /// Search within the document by opening the backend on-demand.
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<RenderSearchMatch>> {
-        match self {
-            Self::Pdf(r) => r.search(query, limit),
-            Self::Epub(r) => r.search(query, limit),
-            Self::Comic(r) => r.search(query, limit),
-            Self::Text(r) => r.search(query, limit),
+        match self.kind {
+            DocumentFormat::Pdf => PdfRenderer::open(&self.path)?.search(query, limit),
+            DocumentFormat::Epub => epub::EpubRenderer::open(&self.path)?.search(query, limit),
+            DocumentFormat::Cbz | DocumentFormat::Cbr => comic::ComicRenderer::open(&self.path)?.search(query, limit),
+            DocumentFormat::Txt | DocumentFormat::Markdown => text::TextRenderer::open(&self.path)?.search(query, limit),
         }
     }
 }

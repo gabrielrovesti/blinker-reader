@@ -30,3 +30,6 @@ image = "0.25"
 
 # Natural sorting for comic pages
 natord = "1.0"
+
+# Text rasterization
+fontdue = "0.8"

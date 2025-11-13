@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::{DocumentRenderer, RenderSearchMatch, RenderedPage};
 
 pub struct EpubRenderer {
-    doc: epub::doc::EpubDoc<std::io::BufReader<std::fs::File>>,
     chapters: Vec<String>,
 }
 
@@ -58,10 +57,10 @@ impl DocumentRenderer for EpubRenderer {
         let spine_len = doc.spine.len();
 
         for i in 0..spine_len {
-            doc.set_current_page(i);
-
-            if let Some(content) = doc.get_current_str() {
-                // Sanitize the HTML content
+            // Prefer new chapter-based API when available
+            // set_current_chapter returns Result
+            let _ = doc.set_current_chapter(i);
+            if let Some((content, _base)) = doc.get_current_str() {
                 let sanitized = Self::sanitize_html(&content);
                 chapters.push(sanitized);
             }
@@ -69,7 +68,7 @@ impl DocumentRenderer for EpubRenderer {
 
         tracing::debug!("EPUB loaded with {} chapters", chapters.len());
 
-        Ok(Self { doc, chapters })
+        Ok(Self { chapters })
     }
 
     fn page_count(&self) -> Result<usize> {
@@ -78,9 +77,6 @@ impl DocumentRenderer for EpubRenderer {
     }
 
     fn render_page(&self, page: usize) -> Result<RenderedPage> {
-        // For MVP, we'll render EPUB as simple text
-        // A full implementation would use a web rendering engine
-
         let page_index = page.saturating_sub(1);
 
         if page_index >= self.chapters.len() {
@@ -90,21 +86,94 @@ impl DocumentRenderer for EpubRenderer {
         let html = &self.chapters[page_index];
         let text = Self::extract_text_from_html(html);
 
-        // Create a simple text rendering
-        // For MVP: white background with black text
-        // TODO: Proper HTML/CSS rendering using a web engine
-
         let width = 800u32;
         let height = 1000u32;
 
-        // Create white background RGBA
+        // Reuse the simple text rasterizer from the text renderer
+        fn load_system_font_bytes() -> Option<Vec<u8>> {
+            #[cfg(target_os = "windows")]
+            {
+                let candidates = [
+                    r"C:\\Windows\\Fonts\\consola.ttf",
+                    r"C:\\Windows\\Fonts\\arial.ttf",
+                    r"C:\\Windows\\Fonts\\segoeui.ttf",
+                ];
+                for p in candidates {
+                    if let Ok(b) = std::fs::read(p) { return Some(b); }
+                }
+            }
+            #[cfg(target_os = "linux")]
+            {
+                let candidates = [
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+                ];
+                for p in candidates {
+                    if let Ok(b) = std::fs::read(p) { return Some(b); }
+                }
+            }
+            #[cfg(target_os = "macos")]
+            {
+                let candidates = [
+                    "/System/Library/Fonts/SFNS.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial.ttf",
+                ];
+                for p in candidates {
+                    if let Ok(b) = std::fs::read(p) { return Some(b); }
+                }
+            }
+            None
+        }
+
         let mut pixels = vec![255u8; (width * height * 4) as usize];
+        if let Some(bytes) = load_system_font_bytes() {
+            if let Ok(font) = fontdue::Font::from_bytes(bytes, fontdue::FontSettings::default()) {
+                let font_size = 18.0;
+                let line_h = (font_size * 1.4) as i32;
+                let margin = 16i32;
+                let mut x = margin;
+                let mut y = margin + line_h;
+                let w_i = width as i32;
+                let h_i = height as i32;
 
-        // For now, just return the white canvas
-        // In a real implementation, you'd render the text properly
-        // This is a placeholder that at least shows the document opened
-
-        tracing::warn!("EPUB rendering is simplified - proper HTML rendering TODO");
+                for ch in text.chars() {
+                    if ch == '\n' {
+                        x = margin;
+                        y += line_h;
+                        if y >= h_i - margin { break; }
+                        continue;
+                    }
+                    let (metrics, bitmap) = font.rasterize(ch, font_size);
+                    let adv = metrics.advance_width as i32;
+                    if x + adv >= w_i - margin {
+                        x = margin;
+                        y += line_h;
+                        if y >= h_i - margin { break; }
+                    }
+                    let gx = x + metrics.xmin;
+                    let gy = y - metrics.height as i32;
+                    for row in 0..(metrics.height as i32) {
+                        let dy = gy + row;
+                        if dy < 0 || dy >= h_i { continue; }
+                        for col in 0..(metrics.width as i32) {
+                            let dx = gx + col;
+                            if dx < 0 || dx >= w_i { continue; }
+                            let src_alpha = bitmap[(row as usize) * (metrics.width as usize) + (col as usize)];
+                            if src_alpha == 0 { continue; }
+                            let idx = ((dy as u32) * width + (dx as u32)) as usize * 4;
+                            let val = 255u8.saturating_sub(src_alpha);
+                            pixels[idx] = val;
+                            pixels[idx + 1] = val;
+                            pixels[idx + 2] = val;
+                            pixels[idx + 3] = 255;
+                        }
+                    }
+                    x += adv.max(1);
+                }
+            }
+        } else {
+            tracing::warn!("No system font found; returning blank canvas for EPUB page");
+        }
 
         Ok(RenderedPage { width, height, pixels })
     }
