@@ -11,7 +11,7 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 
 # PDF rendering
-pdfium-render = "0.9"
+pdfium-render = "0.8"
 
 # EPUB rendering
 epub = "2.0"

@@ -7,18 +7,21 @@ A minimal CLI is available to demonstrate the core library scan + database flow 
 
 Build and run:
 
-- Build workspace: `cargo build -p blinker-cli`
+- Build only the CLI: `cargo build -p blinker-cli`
 - Scan a folder into a SQLite DB: `cargo run -p blinker-cli -- scan <DIR> <DB_PATH>`
 
 Example:
 
-`cargo run -p blinker-cli -- scan C:\\Books .\\blinker.db`
+`cargo run -p blinker-cli -- scan .\\tmp_books $env:TEMP\\blinker_cli.db`
 
-This will:
-- Initialize the SQLite schema (FTS5-enabled) if needed
-- Recursively scan `<DIR>` for supported formats (pdf, epub, cbz, cbr, txt, md)
-- Hash files with BLAKE3 and upsert entries into `library_item`
+What it does:
+- Initializes the SQLite schema (FTS5-enabled) if needed
+- Recursively scans `<DIR>` for supported formats (pdf, epub, cbz, cbr, txt, md)
+- Hashes files with BLAKE3 and upserts entries into `library_item`
 
 Notes:
 - IDs are the file content hash (BLAKE3) for the PoC
-- Tags, FTS queries and advanced metadata extraction are not implemented yet
+- PDF/EPUB metadata extraction is currently behind optional features.
+  - Default build disables `pdf-metadata` to avoid requiring PDFium at build/runtime.
+  - To enable: `cargo build -p blinker-core-library --features pdf-metadata,epub-metadata`
+- Tags, advanced FTS queries, and rich metadata extraction are WIP
